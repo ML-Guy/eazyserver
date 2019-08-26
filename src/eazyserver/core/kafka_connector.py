@@ -11,6 +11,10 @@ from confluent_kafka import Producer as KafkaProducer
 from confluent_kafka import Consumer as KafkaConsumer
 from confluent_kafka import TopicPartition
 
+#############################
+## Helper Methods
+#############################
+
 def dict_to_binary(the_dict):
 	binary = ' '.join(format(ord(letter), 'b') for letter in the_dict)
 	return binary
@@ -68,6 +72,68 @@ def formatOutput(output,behavior,source_data):
 		output["_created"] = output["_updated"]
 		
 	return output
+
+#############################
+## Kafka Library classes
+#############################
+
+class Kafka_PyKafka(object):
+	Type = "PyKafka Wrapper Class"
+	def __init__(self, **kwargs):
+
+		self.kafka_broker = kwargs.get("kafka_broker")
+		self.kafka_producer_topic = kwargs.get("kafka_producer_topic")
+		self.consumer_1_topic = kwargs.get("consumer_1_topic")
+		self.consumer_2_topic = kwargs.get("consumer_2_topic")
+		self.producer_params = kwargs.get("producer_params")
+		self.consumer_params = kwargs.get("consumer_params")
+
+	def produce(self):
+		pass
+
+	def consume(self):
+		pass
+
+
+class Kafka_Confluent(object):
+	Type = "Confluent-Kafka Wrapper Class"
+	def __init__(self, **kwargs):
+		pass
+
+	def produce(self):
+		pass
+
+	def consume(self):
+		pass
+
+#############################
+## Main Connector Class
+#############################
+
+class KafkaConnector(object):
+	Type = "KafkaConnector"
+
+	def __init__(self, **kwargs):
+
+		self.behavior = kwargs.get("Behaviour")
+		self.kafka_client_type = kwargs.get("kafka_client_type")
+		self.kafka_client_config = kwargs.get("kafka_client_config")
+		self.client = None
+
+		# TODO : Validate **kwargs
+
+		# Create client based on type of Kafka Client specified
+		
+		if(self.kafka_client_type == "pykafka"):
+			self.client = Kafka_PyKafka(behavior=self.behavior, kafka_config=self.kafka_client_config)
+
+		if(self.kafka_client_type == "confluent"):
+			self.client = Kafka_Confluent(behavior=self.behavior, kafka_config=self.kafka_client_config)
+
+	def run(self):
+		pass
+
+
 
 class KafkaConnector(object):
 	Type = "KafkaConnector"
