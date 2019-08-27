@@ -113,29 +113,46 @@ class Kafka_PyKafka(object):
 
 class Kafka_Confluent(object):
 	Type = "Confluent-Kafka Wrapper Class"
-	def __init__(self, **kwargs):
+	def __init__(self, kafka_client_config):
 
-		self.broker = kwargs.get("broker")
-		self.sync_consumers = kwargs.get("sync_consumers")
-		self.producer_params = kwargs.get("producer_params")
-		self.consumer_1_params = kwargs.get("consumer_1_params")
-		self.consumer_2_params = kwargs.get("consumer_2_params")
+		print("="*50)
+		print("Printing Kafka_Confluent kwargs...")
+		import pprint
+		pp = pprint.PrettyPrinter(indent=4)
+		pp.pprint(kafka_client_config)
+		print("="*50)
+
+		self.broker = kafka_client_config["broker"]
+		self.sync_consumers = kafka_client_config["sync_consumers"]
+		self.producer_params = kafka_client_config["producer_params"]
+		self.consumer_1_params = kafka_client_config["consumer_1_params"]
+		self.consumer_2_params = kafka_client_config["consumer_2_params"]
 		self.producer = None
+		self.producer_topic = None
 		self.consumer_1 = None
 		self.consumer_2 = None
 
 		# Create Producer
 		if(self.producer_params):
+			self.producer_topic = self.producer_params['topic']
+			self.producer_params.pop('topic')
 			self.producer = KafkaProducer(self.producer_params)
+			print("Producer created successfully...")
 
 		# Create Consumer 1
 		if(self.consumer_1_params):
-			self.consumer_1 = KafkaConsumer(self.consumer_1_params)
-			self.consumer_1.subscribe([self.consumer_1_params['topic']])
+			params = self.consumer_1_params
+			topic = params['topic']
+			params.pop('topic')
+
+			self.consumer_1_params['bootstrap.servers'] = kafka_client_config["broker"]
+			self.consumer_1 = KafkaConsumer(params)
+			self.consumer_1.subscribe([topic])
 			self.consumer_1.poll()
 
 		# Create Consumer 2
 		if(self.consumer_2_params):
+			logger.info("self.consumer_2_params is not None!!!!!!!!!!!")
 			self.consumer_2 = KafkaConsumer(self.consumer_2_params)
 			self.consumer_2.subscribe([self.consumer_2_params['topic']])
 			self.consumer_2.poll()
@@ -143,8 +160,13 @@ class Kafka_Confluent(object):
 		# TODO : Print Complete config
 
 
-	def produce(self):
-		self.producer.produce(self.producer_params['topic'], value)
+	def produce(self, value):
+		print("="*50)
+		print("Producing Message")
+		print("self.producer_topic", self.producer_topic)
+		print("message size, ", str(len(value)))
+		print("="*50)
+		self.producer.produce(self.producer_topic, value)
 		self.producer.poll(0)
 		return(True)
 
@@ -185,16 +207,18 @@ class KafkaConnector(object):
 
 		print("="*50)
 		print("Printing kwargs...")
-		for k.v in kwargs.items():
+		for k,v in kwargs.items():
 			print(k, v)
 		print("="*50)
 
 		# Create client based on type of Kafka Client specified
 		if(self.kafka_client_type == "pykafka"):
-			self.client = Kafka_PyKafka(behavior=self.behavior, kafka_client_config=self.kafka_client_config)
+			self.client = Kafka_PyKafka(kafka_client_config=self.kafka_client_config)
 
+		print("GG")
 		if(self.kafka_client_type == "confluent"):
-			self.client = Kafka_Confluent(behavior=self.behavior, kafka_client_config=self.kafka_client_config)
+			print("WP")
+			self.client = Kafka_Confluent(kafka_client_config=self.kafka_client_config)
 
 	def run(self):
 		while(True):
@@ -242,7 +266,7 @@ class KafkaConnector(object):
 			# Produce
 			############################
 
-			if(self.client.producer):
+			if(self.client.producer_topic):
 				if(output):
 					message_to_produce = dict_to_kafka(output, source_data)
 					producer_response = self.client.produce(message_to_produce)
