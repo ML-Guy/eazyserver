@@ -120,6 +120,9 @@ class Kafka_Confluent(object):
 		self.producer_params = kwargs.get("producer_params")
 		self.consumer_1_params = kwargs.get("consumer_1_params")
 		self.consumer_2_params = kwargs.get("consumer_2_params")
+		self.producer = None
+		self.consumer_1 = None
+		self.consumer_2 = None
 
 		# Create Producer
 		if(self.producer_params):
