@@ -130,6 +130,7 @@ class Kafka_Confluent(object):
 		self.producer = None
 		self.producer_topic = None
 		self.consumer_1 = None
+		self.consumer_1_topic = None
 		self.consumer_2 = None
 
 		# Create Producer
@@ -141,13 +142,12 @@ class Kafka_Confluent(object):
 
 		# Create Consumer 1
 		if(self.consumer_1_params):
-			params = self.consumer_1_params
-			topic = params['topic']
-			params.pop('topic')
+			self.consumer_1_topic = self.consumer_1_params['topic']
+			self.consumer_1_params.pop('topic')
 
 			self.consumer_1_params['bootstrap.servers'] = kafka_client_config["broker"]
-			self.consumer_1 = KafkaConsumer(params)
-			self.consumer_1.subscribe([topic])
+			self.consumer_1 = KafkaConsumer(self.consumer_1_params)
+			self.consumer_1.subscribe([self.consumer_1_topic])
 			self.consumer_1.poll()
 
 		# Create Consumer 2
@@ -171,6 +171,10 @@ class Kafka_Confluent(object):
 		return(True)
 
 	def consume1(self):
+		print("="*50)
+		print("Consumeing Message")
+		print("self.consumer_1_topic", self.consumer_1_topic)
+		print("="*50)
 		message_kafka = self.consumer1.consume(num_messages=1)[0]
 		message_dict = kafka_to_dict(message_kafka)
 		return(message_dict)
@@ -251,7 +255,7 @@ class KafkaConnector(object):
 				else:
 					logger.info("Consumers not Synced.")
 
-			elif(self.client.consumer_1):
+			elif(self.client.consumer_1_topic):
 				message_1 = self.client.consume1()
 				source_data.append(message_1)
 				output = self.behavior.run(message_1)
