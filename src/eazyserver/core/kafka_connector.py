@@ -183,6 +183,12 @@ class KafkaConnector(object):
 		
 		# TODO : Validate **kwargs
 
+		print("="*50)
+		print("Printing kwargs...")
+		for k.v in kwargs.items():
+			print(k, v)
+		print("="*50)
+
 		# Create client based on type of Kafka Client specified
 		if(self.kafka_client_type == "pykafka"):
 			self.client = Kafka_PyKafka(behavior=self.behavior, kafka_client_config=self.kafka_client_config)
@@ -225,7 +231,6 @@ class KafkaConnector(object):
 				message_1 = self.client.consume1()
 				source_data.append(message_1)
 				output = self.behavior.run(message_1)
-
 			else:
 				output = self.behavior.run()
 

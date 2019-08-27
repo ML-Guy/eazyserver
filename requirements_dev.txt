@@ -20,3 +20,4 @@ flatten_json==0.1.6
 influxdb==5.0.0
 confluent-kafka==1.1.0
 pykafka==2.8.0
+pprint
