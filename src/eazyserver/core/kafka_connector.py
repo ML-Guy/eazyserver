@@ -83,26 +83,47 @@ def formatOutput(output,behavior,source_data):
 
 class Kafka_PyKafka(object):
 	Type = "PyKafka Wrapper Class"
-	def __init__(self, **kwargs):
+	def __init__(self, kafka_client_config):
 
 		# Get Config Params
-		self.kafka_broker = kwargs.get("kafka_broker")
-		self.kafka_producer_topic = kwargs.get("kafka_producer_topic")
-		self.consumer_1_topic = kwargs.get("consumer_1_topic")
-		self.consumer_2_topic = kwargs.get("consumer_2_topic")
-		self.producer_params = kwargs.get("producer_params")
-		self.consumer_params = kwargs.get("consumer_params")
+		self.broker = kafka_client_config["broker"]
+	
+		self.producer = None
+		self.producer_params = kafka_client_config["producer_params"]
+		self.consumer_1 = None
+		self.consumer_1_params = kafka_client_config["consumer_1_params"]
+		self.consumer_2 = None
+		self.consumer_2_params = kafka_client_config["consumer_2_params"]
+
+		self.producer_topic = kafka_client_config["producer_topic"]
+		self.consumer_1_topic = None
+		self.consumer_2_topic = None
+
+		self.sync_consumers = kafka_client_config["sync_consumers"]
+
+		self.pykafka_client = KafkaClient("kafka:9092")
+
 
 		# Create Producer
+		if(kafka_client_config["producer_topic"]):
+			self.producer_params.pop('topic')
+			
+			print("="*50)
+			print(self.producer_params)
+
+			topic = self.pykafka_client.topics[kafka_client_config["producer_topic"]]
+			self.producer = topic.get_producer(self.producer_params)
+
 
 		# Create Consumer 1
+		self.producer_topic = kafka_client_config["producer_topic"]
 
 		# Create Consumer 2
 
 		# Print Complete config
 
-	def produce(self):
-		pass
+	def produce(self, message):
+		self.producer.produce(message)
 
 	def consume(self):
 		pass
