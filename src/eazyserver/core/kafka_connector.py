@@ -28,7 +28,7 @@ def binary_to_dict(the_binary):
 	return jsn
 
 def kafka_to_dict(kafka_msg):
-	msg = json.loads(binary_to_dict(kafka_msg.value()))
+	msg = json.loads(binary_to_dict(kafka_msg.value))
 	kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
 	msg["_kafka__id"]= kafka_msg_id
 	return msg
@@ -87,36 +87,24 @@ class Kafka_PyKafka(object):
 
 		# Get Config Params
 		self.broker = kafka_client_config["broker"]
-	
-		self.producer = None
-		self.producer_params = kafka_client_config["producer_params"]
-		self.consumer_1 = None
-		self.consumer_1_params = kafka_client_config["consumer_1_params"]
-		self.consumer_2 = None
-		self.consumer_2_params = kafka_client_config["consumer_2_params"]
-
 		self.producer_topic = kafka_client_config["producer_topic"]
-		self.consumer_1_topic = None
-		self.consumer_2_topic = None
-
+		self.consumer_1_topic = kafka_client_config["consumer_1_topic"]
+		self.consumer_2_topic = kafka_client_config["consumer_2_topic"]
 		self.sync_consumers = kafka_client_config["sync_consumers"]
 
+		# Create global (sort of) PyKafka client
 		self.pykafka_client = KafkaClient("kafka:9092")
-
 
 		# Create Producer
 		if(kafka_client_config["producer_topic"]):
-			self.producer_params.pop('topic')
-			
-			print("="*50)
-			print(self.producer_params)
-
 			topic = self.pykafka_client.topics[kafka_client_config["producer_topic"]]
-			self.producer = topic.get_producer(self.producer_params)
+			self.producer = topic.get_producer(kafka_client_config["producer_params"])
 
 
 		# Create Consumer 1
-		self.producer_topic = kafka_client_config["producer_topic"]
+		if(kafka_client_config["consumer_1_topic"]):
+			topic = self.pykafka_client.topics[kafka_client_config["consumer_1_topic"]]
+			self.consumer_1 = topic.get_simple_consumer(kafka_client_config["consumer_1_params"])
 
 		# Create Consumer 2
 
@@ -125,8 +113,28 @@ class Kafka_PyKafka(object):
 	def produce(self, message):
 		self.producer.produce(message)
 
-	def consume(self):
-		pass
+	def consume1(self):
+		message_kafka = self.consumer_1.consume()
+		if(message_kafka is not None):
+			
+
+			print("="*50)
+			print("Consumed 1 PyKafka")
+			print("Message Size = ".format(str(len(message_kafka))))
+			print("="*50)
+
+			# Duplicate code converting Binary to final Dict message
+			the_binary = message_kafka.value
+			jsn = ''.join(chr(int(x, 2)) for x in the_binary.split())
+			msg = json.loads(jsn)
+			# kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
+			# msg["_kafka__id"]= kafka_msg_id
+			import pdb; pdb.set_trace()
+			return(msg)
+		else:
+			logger.info("Empty message received from consumer")
+			return(None)
+
 
 	def sync_consumers(self):
 		pass
@@ -257,7 +265,7 @@ class KafkaConnector(object):
 			message_2 = None
 
 			# if both consumers are specified
-			if(self.client.consumer_2):
+			if(self.client.consumer_2_topic):
 				synced = None
 
 				# TODO Sync Consumers
