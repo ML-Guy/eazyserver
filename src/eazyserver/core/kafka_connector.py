@@ -90,7 +90,6 @@ class Kafka_PyKafka(object):
 		self.producer_topic = kafka_client_config["producer_topic"]
 		self.consumer_1_topic = kafka_client_config["consumer_1_topic"]
 		self.consumer_2_topic = kafka_client_config["consumer_2_topic"]
-		self.sync_consumers = kafka_client_config["sync_consumers"]
 
 		# Create global (sort of) PyKafka client
 		self.pykafka_client = KafkaClient("kafka:9092")
@@ -131,7 +130,7 @@ class Kafka_PyKafka(object):
 			msg = json.loads(jsn)
 			# kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
 			# msg["_kafka__id"]= kafka_msg_id
-			# import pdb; pdb.set_trace()
+			
 			return(msg)
 		else:
 			logger.info("Empty message received from consumer")
@@ -160,7 +159,29 @@ class Kafka_PyKafka(object):
 
 
 	def sync_consumers(self):
-		pass
+
+		message_1 = self.consumer_1.consume()
+		message_1_offset = message_1.offset - 2
+		message_1_partition = self.consumer_1.partitions[0]
+		offset = [(message_1_partition, message_1_offset)]
+
+		self.consumer_1.reset_offsets([(message_1_partition, message_1_offset)])
+		self.consumer_1.stop()
+		self.consumer_1.start()
+
+		self.consumer_2.reset_offsets([(message_1_partition, message_1_offset)])
+		self.consumer_2.stop()
+		self.consumer_2.start()
+
+		m1 = self.consumer_1.consume()
+		m2 = self.consumer_2.consume()
+
+		print("Synced????")
+
+		print("OFFSET M1 = {}".format(m1.offset))
+		print("OFFSET M2 = {}".format(m2.offset))
+
+		return(m1.offset == m2.offset)
 
 
 class Kafka_Confluent(object):
@@ -175,7 +196,6 @@ class Kafka_Confluent(object):
 		print("="*50)
 
 		self.broker = kafka_client_config["broker"]
-		self.sync_consumers = kafka_client_config["sync_consumers"]
 		self.producer_params = kafka_client_config["producer_params"]
 		self.consumer_1_params = kafka_client_config["consumer_1_params"]
 		self.consumer_2_params = kafka_client_config["consumer_2_params"]
@@ -224,7 +244,7 @@ class Kafka_Confluent(object):
 
 	def consume1(self):
 		print("="*50)
-		print("Consumeing Message")
+		print("Consuming Message")
 		print("self.consumer_1_topic", self.consumer_1_topic)
 		print("="*50)
 		message_kafka = self.consumer1.consume(num_messages=1)[0]
@@ -271,13 +291,30 @@ class KafkaConnector(object):
 		if(self.kafka_client_type == "pykafka"):
 			self.client = Kafka_PyKafka(kafka_client_config=self.kafka_client_config)
 
-		print("GG")
 		if(self.kafka_client_type == "confluent"):
 			print("WP")
 			self.client = Kafka_Confluent(kafka_client_config=self.kafka_client_config)
 
 	def run(self):
-		while(True):
+
+		
+		import pdb; pdb.set_trace();
+		print("Testing 1 2 3 ...")
+
+		m1, m2 = self.client.consumer_1.consume(), self.client.consumer_2.consume()
+
+		print("OFFSET M1 = {}".format(m1.offset))
+		print("OFFSET M2 = {}".format(m2.offset))
+
+		for i in range(9):
+			m2 = self.client.consumer_2.consume()
+			print("OFFSET M2 = {}".format(m2.offset))
+
+		self.client.sync_consumers()
+
+		import pdb; pdb.set_trace()
+
+		while(False):
 			source_data = []
 
 			############################
@@ -316,7 +353,7 @@ class KafkaConnector(object):
 					message_2 = self.client.consume2()
 					message_1 = self.client.consume1()
 
-					import pdb; pdb.set_trace();
+					# import pdb; pdb.set_trace();
 
 			elif(self.client.consumer_1_topic):
 				message_1 = self.client.consume1()
