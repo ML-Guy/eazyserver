@@ -107,6 +107,9 @@ class Kafka_PyKafka(object):
 			self.consumer_1 = topic.get_simple_consumer(kafka_client_config["consumer_1_params"])
 
 		# Create Consumer 2
+		if(kafka_client_config["consumer_2_topic"]):
+			topic = self.pykafka_client.topics[kafka_client_config["consumer_2_topic"]]
+			self.consumer_2 = topic.get_simple_consumer(kafka_client_config["consumer_2_params"])
 
 		# Print Complete config
 
@@ -117,7 +120,6 @@ class Kafka_PyKafka(object):
 		message_kafka = self.consumer_1.consume()
 		if(message_kafka is not None):
 			
-
 			print("="*50)
 			print("Consumed 1 PyKafka")
 			print("Message Size = ".format(str(len(message_kafka))))
@@ -129,7 +131,28 @@ class Kafka_PyKafka(object):
 			msg = json.loads(jsn)
 			# kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
 			# msg["_kafka__id"]= kafka_msg_id
-			import pdb; pdb.set_trace()
+			# import pdb; pdb.set_trace()
+			return(msg)
+		else:
+			logger.info("Empty message received from consumer")
+			return(None)
+
+	def consume2(self):
+		message_kafka = self.consumer_2.consume()
+		if(message_kafka is not None):
+			
+			print("="*50)
+			print("Consumed 2 PyKafka")
+			print("Message Size = ".format(str(len(message_kafka))))
+			print("="*50)
+
+			# Duplicate code converting Binary to final Dict message
+			the_binary = message_kafka.value
+			jsn = ''.join(chr(int(x, 2)) for x in the_binary.split())
+			msg = json.loads(jsn)
+			# kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
+			# msg["_kafka__id"]= kafka_msg_id
+			# import pdb; pdb.set_trace()
 			return(msg)
 		else:
 			logger.info("Empty message received from consumer")
@@ -263,26 +286,37 @@ class KafkaConnector(object):
 
 			message_1 = None
 			message_2 = None
+			output = None
 
 			# if both consumers are specified
 			if(self.client.consumer_2_topic):
+				print("BOTH CONSUMER PRESENT")
+
 				synced = None
 
 				# TODO Sync Consumers
 				if(self.kafka_client_config['sync_consumers']):
+					# sync_consumer = True
 					synced = self.client.sync_consumers()
 
-				# If properly synced, consume messages
-				if(synced):
+					# If properly synced, consume messages
+					if(synced):
+						message_2 = self.client.consume2()
+						message_1 = self.client.consume1()
+
+						source_data.append(message_2)
+						source_data.append(message_1)
+
+						output = self.behavior.run(message_1, message_2)
+					else:
+						logger.info("Consumers not Synced.")
+
+				else:
+					# sync_consumer = False
 					message_2 = self.client.consume2()
 					message_1 = self.client.consume1()
 
-					source_data.append(message_2)
-					source_data.append(message_1)
-
-					output = self.behavior.run(message_1, message_2)
-				else:
-					logger.info("Consumers not Synced.")
+					import pdb; pdb.set_trace();
 
 			elif(self.client.consumer_1_topic):
 				message_1 = self.client.consume1()
