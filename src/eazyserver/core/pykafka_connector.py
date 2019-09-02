@@ -1,4 +1,14 @@
+import logging
+logger = logging.getLogger(__name__)
+logger.debug("Loaded " + __name__)
 
+import json
+import time
+import sys
+import pprint
+
+from pykafka import KafkaClient
+from pykafka.common import OffsetType
 
 class Kafka_PyKafka(object):
 	Type = "PyKafka Wrapper Class"
