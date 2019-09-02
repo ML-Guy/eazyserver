@@ -179,7 +179,8 @@ class Kafka_PyKafka(object):
 		print("OFFSET M1 = {}".format(m1.offset))
 		print("OFFSET M2 = {}".format(m2.offset))
 
-		return(m1.offset == m2.offset)
+		if(m1.offset == m2.offset):
+			return(m1.value, m2.value)
 
 
 class Kafka_Confluent(object):
@@ -322,34 +323,7 @@ class KafkaConnector(object):
 
 	def run(self):
 
-		print("Testing 1 2 3 ...")
-
-		# # TESTING CONFLUENT PRODUCER
-		print("Producing message using confluent...")
-		if(self.client.producer_topic):
-			for i in range(10):
-				output = {"Hello" : "world"}
-				message_to_produce = json.dumps(output)
-				producer_response = self.client.produce(message_to_produce)
-
-		# m1 = self.client.consume1()
-		# m2 = self.client.consume2()
-
-		m1, m2 = self.client.consumer_1.consume(), self.client.consumer_2.consume()
-
-		print("OFFSET M1 = {}".format(m1[0].offset()))
-		print("OFFSET M2 = {}".format(m2[0].offset()))
-
-		for i in range(4):
-			m2 = self.client.consumer_2.consume()
-			print("OFFSET M2 = {}".format(m2[0].offset()))
-
-		m1, m2 = self.client.sync_consumers()
-
-
-
-
-		while(False):
+		while(True):
 			source_data = []
 
 			############################
@@ -369,19 +343,11 @@ class KafkaConnector(object):
 				# TODO Sync Consumers
 				if(self.kafka_client_config['sync_consumers']):
 					# sync_consumer = True
-					synced = self.client.sync_consumers()
+					message_1, message_2 = self.client.sync_consumers()
+					source_data.append(message_2)
+					source_data.append(message_1)
 
-					# If properly synced, consume messages
-					if(synced):
-						message_2 = self.client.consume2()
-						message_1 = self.client.consume1()
-
-						source_data.append(message_2)
-						source_data.append(message_1)
-
-						output = self.behavior.run(message_1, message_2)
-					else:
-						logger.info("Consumers not Synced.")
+					output = self.behavior.run(message_1, message_2)
 
 				else:
 					# sync_consumer = False
