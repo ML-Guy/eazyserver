@@ -4,6 +4,7 @@ logger.debug("Loaded " + __name__)
 
 import json
 import time
+import sys
 import pprint
 from bson.objectid import ObjectId
 from datetime import datetime
@@ -19,16 +20,16 @@ from pykafka.common import OffsetType
 ## Helper Methods
 #############################
 
-def dict_to_binary(the_dict):
-	binary = ' '.join(format(ord(letter), 'b') for letter in the_dict)
-	return binary
+# def dict_to_binary(the_dict):
+# 	binary = ' '.join(format(ord(letter), 'b') for letter in the_dict)
+# 	return binary
 
-def binary_to_dict(the_binary):
-	jsn = ''.join(chr(int(x, 2)) for x in the_binary.split())
-	return jsn
+# def binary_to_dict(the_binary):
+# 	jsn = ''.join(chr(int(x, 2)) for x in the_binary.split())
+# 	return jsn
 
 def kafka_to_dict(kafka_msg):
-	msg = json.loads(binary_to_dict(kafka_msg.value))
+	msg = json.loads(kafka_msg.value)
 	kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
 	msg["_kafka__id"]= kafka_msg_id
 	return msg
@@ -38,7 +39,7 @@ def dict_to_kafka(output,source_data):
 		if output["source_id"] == data["_id"]:
 			output["_kafka_source_id"] = data["_kafka__id"]
 			break
-	kafka_msg = dict_to_binary(json.dumps(output))
+	kafka_msg = json.dumps(output)
 	return kafka_msg
 
 # TODO: Move/Add formatOutput to behaviour base class 
@@ -149,9 +150,6 @@ class Kafka_PyKafka(object):
 			the_binary = message_kafka.value
 			jsn = ''.join(chr(int(x, 2)) for x in the_binary.split())
 			msg = json.loads(jsn)
-			# kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
-			# msg["_kafka__id"]= kafka_msg_id
-			# import pdb; pdb.set_trace()
 			return(msg)
 		else:
 			logger.info("Empty message received from consumer")
@@ -264,10 +262,33 @@ class Kafka_Confluent(object):
 		message_dict = json.loads(message_kafka.value())
 		return(message_dict)
 		
-
 	def sync_consumers(self):
-		logger.info("Syncing consumers...")
-		pass
+
+		m1 = self.consumer_1.consume()[0]
+		m2 = self.consumer_2.consume()[0]
+
+		if(m1.offset() == m2.offset()): # Consumers are synced
+			return(m1.value(), m2.value())
+
+		logger.info("Syncing Consumers...")
+
+		consumer_2_topic_name = m2.topic()
+		consumer_2_partition = m2.partition()
+		consumer_2_offset = m1.offset()
+		consumer_2_topic_partition = TopicPartition(topic=consumer_2_topic_name, partition=consumer_2_partition, offset=consumer_2_offset) 
+
+		# Sync Consumer 2
+		self.consumer_2.seek(consumer_2_topic_partition)
+		m2 = self.consumer_2.consume()[0]
+
+		import pdb; pdb.set_trace()
+
+		if(m1.offset() == m2.offset()): 
+			return(m1.value(), m2.value())
+
+		logger.info("Consumers not synced. Unknown error.")
+		sys.exit(0)
+
 
 #############################
 ## Main Connector Class
@@ -301,36 +322,32 @@ class KafkaConnector(object):
 
 	def run(self):
 
-		
-		import pdb; pdb.set_trace();
 		print("Testing 1 2 3 ...")
 
 		# # TESTING CONFLUENT PRODUCER
 		print("Producing message using confluent...")
 		if(self.client.producer_topic):
-			output = {"Hello" : "world"}
-			message_to_produce = json.dumps(output)
-			producer_response = self.client.produce(message_to_produce)
+			for i in range(10):
+				output = {"Hello" : "world"}
+				message_to_produce = json.dumps(output)
+				producer_response = self.client.produce(message_to_produce)
 
-		m1 = self.client.consume1()
-		m2 = self.client.consume2()
+		# m1 = self.client.consume1()
+		# m2 = self.client.consume2()
+
+		m1, m2 = self.client.consumer_1.consume(), self.client.consumer_2.consume()
+
+		print("OFFSET M1 = {}".format(m1[0].offset()))
+		print("OFFSET M2 = {}".format(m2[0].offset()))
+
+		for i in range(4):
+			m2 = self.client.consumer_2.consume()
+			print("OFFSET M2 = {}".format(m2[0].offset()))
+
+		m1, m2 = self.client.sync_consumers()
 
 
 
-
-
-		# m1, m2 = self.client.consumer_1.consume(), self.client.consumer_2.consume()
-
-		# print("OFFSET M1 = {}".format(m1.offset))
-		# print("OFFSET M2 = {}".format(m2.offset))
-
-		# for i in range(9):
-		# 	m2 = self.client.consumer_2.consume()
-		# 	print("OFFSET M2 = {}".format(m2.offset))
-
-		# self.client.sync_consumers()
-
-		import pdb; pdb.set_trace()
 
 		while(False):
 			source_data = []
