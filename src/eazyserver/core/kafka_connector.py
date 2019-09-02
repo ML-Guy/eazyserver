@@ -199,16 +199,19 @@ class Kafka_Confluent(object):
 		self.producer_params = kafka_client_config["producer_params"]
 		self.consumer_1_params = kafka_client_config["consumer_1_params"]
 		self.consumer_2_params = kafka_client_config["consumer_2_params"]
-		self.producer = None
+
 		self.producer_topic = None
-		self.consumer_1 = None
 		self.consumer_1_topic = None
+		self.consumer_2_topic = None
+
+		self.producer = None
+		self.consumer_1 = None
 		self.consumer_2 = None
 
 		# Create Producer
-		if(self.producer_params):
-			self.producer_topic = self.producer_params['topic']
-			self.producer_params.pop('topic')
+		if(kafka_client_config['producer_topic']):
+			self.producer_topic = kafka_client_config['producer_topic']
+			self.producer_params['bootstrap.servers'] = kafka_client_config["broker"]
 			self.producer = KafkaProducer(self.producer_params)
 			print("Producer created successfully...")
 
@@ -292,7 +295,6 @@ class KafkaConnector(object):
 			self.client = Kafka_PyKafka(kafka_client_config=self.kafka_client_config)
 
 		if(self.kafka_client_type == "confluent"):
-			print("WP")
 			self.client = Kafka_Confluent(kafka_client_config=self.kafka_client_config)
 
 	def run(self):
@@ -301,16 +303,23 @@ class KafkaConnector(object):
 		import pdb; pdb.set_trace();
 		print("Testing 1 2 3 ...")
 
-		m1, m2 = self.client.consumer_1.consume(), self.client.consumer_2.consume()
+		print("Producing message using confluent...")
+		if(self.client.producer_topic):
+			output = {"Hello" : "world"}
+			message_to_produce = json.dumps(output)
+			producer_response = self.client.produce(message_to_produce)
 
-		print("OFFSET M1 = {}".format(m1.offset))
-		print("OFFSET M2 = {}".format(m2.offset))
 
-		for i in range(9):
-			m2 = self.client.consumer_2.consume()
-			print("OFFSET M2 = {}".format(m2.offset))
+		# m1, m2 = self.client.consumer_1.consume(), self.client.consumer_2.consume()
 
-		self.client.sync_consumers()
+		# print("OFFSET M1 = {}".format(m1.offset))
+		# print("OFFSET M2 = {}".format(m2.offset))
+
+		# for i in range(9):
+		# 	m2 = self.client.consumer_2.consume()
+		# 	print("OFFSET M2 = {}".format(m2.offset))
+
+		# self.client.sync_consumers()
 
 		import pdb; pdb.set_trace()
 
