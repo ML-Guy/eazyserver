@@ -216,14 +216,13 @@ class Kafka_Confluent(object):
 			print("Producer created successfully...")
 
 		# Create Consumer 1
-		if(self.consumer_1_params):
-			self.consumer_1_topic = self.consumer_1_params['topic']
-			self.consumer_1_params.pop('topic')
-
+		if(kafka_client_config['consumer_1_topic']):
+			self.consumer_1_topic = kafka_client_config['consumer_1_topic']
 			self.consumer_1_params['bootstrap.servers'] = kafka_client_config["broker"]
 			self.consumer_1 = KafkaConsumer(self.consumer_1_params)
 			self.consumer_1.subscribe([self.consumer_1_topic])
-			self.consumer_1.poll()
+			self.consumer_1.poll(0)
+			print("Consumer 1 created successfully...")
 
 		# Create Consumer 2
 		if(self.consumer_2_params):
@@ -250,8 +249,8 @@ class Kafka_Confluent(object):
 		print("Consuming Message")
 		print("self.consumer_1_topic", self.consumer_1_topic)
 		print("="*50)
-		message_kafka = self.consumer1.consume(num_messages=1)[0]
-		message_dict = kafka_to_dict(message_kafka)
+		message_kafka = self.consumer_1.consume(num_messages=1)[0]
+		message_dict = json.loads(message_kafka.value())
 		return(message_dict)
 
 	def consume2(self):
@@ -303,11 +302,14 @@ class KafkaConnector(object):
 		import pdb; pdb.set_trace();
 		print("Testing 1 2 3 ...")
 
+		# # TESTING CONFLUENT PRODUCER
 		print("Producing message using confluent...")
 		if(self.client.producer_topic):
 			output = {"Hello" : "world"}
 			message_to_produce = json.dumps(output)
 			producer_response = self.client.produce(message_to_produce)
+
+		m1 = self.client.consume1()
 
 
 		# m1, m2 = self.client.consumer_1.consume(), self.client.consumer_2.consume()
