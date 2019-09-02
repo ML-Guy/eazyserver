@@ -221,15 +221,17 @@ class Kafka_Confluent(object):
 			self.consumer_1_params['bootstrap.servers'] = kafka_client_config["broker"]
 			self.consumer_1 = KafkaConsumer(self.consumer_1_params)
 			self.consumer_1.subscribe([self.consumer_1_topic])
-			self.consumer_1.poll(0)
+			self.consumer_1.poll(timeout=0.01)
 			print("Consumer 1 created successfully...")
 
 		# Create Consumer 2
-		if(self.consumer_2_params):
-			logger.info("self.consumer_2_params is not None!!!!!!!!!!!")
+		if(kafka_client_config['consumer_2_topic']):
+			self.consumer_2_topic = kafka_client_config['consumer_2_topic']
+			self.consumer_2_params['bootstrap.servers'] = kafka_client_config["broker"]
 			self.consumer_2 = KafkaConsumer(self.consumer_2_params)
-			self.consumer_2.subscribe([self.consumer_2_params['topic']])
-			self.consumer_2.poll()
+			self.consumer_2.subscribe([self.consumer_2_topic])
+			self.consumer_2.poll(timeout=0.01)
+			print("Consumer 1 created successfully...")
 
 		# TODO : Print Complete config
 
@@ -254,12 +256,13 @@ class Kafka_Confluent(object):
 		return(message_dict)
 
 	def consume2(self):
-		message_kafka = self.consumer2.poll(timeout=0.01)
-
-		if(message_kafka is not None):
-			message_dict = kafka_to_dict(message_kafka)
-
-		return(message_kafka)
+		print("="*50)
+		print("Consuming Message")
+		print("self.consumer_2_topic", self.consumer_2_topic)
+		print("="*50)
+		message_kafka = self.consumer_2.consume(num_messages=1)[0]
+		message_dict = json.loads(message_kafka.value())
+		return(message_dict)
 		
 
 	def sync_consumers(self):
@@ -310,6 +313,10 @@ class KafkaConnector(object):
 			producer_response = self.client.produce(message_to_produce)
 
 		m1 = self.client.consume1()
+		m2 = self.client.consume2()
+
+
+
 
 
 		# m1, m2 = self.client.consumer_1.consume(), self.client.consumer_2.consume()
