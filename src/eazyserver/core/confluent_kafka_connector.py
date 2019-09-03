@@ -27,24 +27,22 @@ class Kafka_Confluent(object):
 		self.consumer_1_params = kafka_client_config["consumer_1_params"]
 		self.consumer_2_params = kafka_client_config["consumer_2_params"]
 
-		self.producer_topic = None
-		self.consumer_1_topic = None
-		self.consumer_2_topic = None
+		self.producer_topic = kafka_client_config.get('producer_topic')
+		self.consumer_1_topic = kafka_client_config.get('consumer_1_topic')
+		self.consumer_2_topic = kafka_client_config.get('consumer_2_topic')
 
 		self.producer = None
 		self.consumer_1 = None
 		self.consumer_2 = None
 
 		# Create Producer
-		if(kafka_client_config['producer_topic']):
-			self.producer_topic = kafka_client_config['producer_topic']
+		if(self.producer_topic):
 			self.producer_params['bootstrap.servers'] = kafka_client_config["broker"]
 			self.producer = KafkaProducer(self.producer_params)
 			print("Producer created successfully...")
 
 		# Create Consumer 1
-		if(kafka_client_config['consumer_1_topic']):
-			self.consumer_1_topic = kafka_client_config['consumer_1_topic']
+		if(self.consumer_1_topic):
 			self.consumer_1_params['bootstrap.servers'] = kafka_client_config["broker"]
 			self.consumer_1 = KafkaConsumer(self.consumer_1_params)
 			self.consumer_1.subscribe([self.consumer_1_topic])
@@ -52,8 +50,7 @@ class Kafka_Confluent(object):
 			print("Consumer 1 created successfully...")
 
 		# Create Consumer 2
-		if(kafka_client_config['consumer_2_topic']):
-			self.consumer_2_topic = kafka_client_config['consumer_2_topic']
+		if(self.consumer_2_topic):
 			self.consumer_2_params['bootstrap.servers'] = kafka_client_config["broker"]
 			self.consumer_2 = KafkaConsumer(self.consumer_2_params)
 			self.consumer_2.subscribe([self.consumer_2_topic])

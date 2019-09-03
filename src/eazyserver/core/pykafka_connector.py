@@ -16,27 +16,27 @@ class Kafka_PyKafka(object):
 
 		# Get Config Params
 		self.broker = kafka_client_config["broker"]
-		self.producer_topic = kafka_client_config["producer_topic"]
-		self.consumer_1_topic = kafka_client_config["consumer_1_topic"]
-		self.consumer_2_topic = kafka_client_config["consumer_2_topic"]
+		self.producer_topic = kafka_client_config.get("producer_topic")
+		self.consumer_1_topic = kafka_client_config.get("consumer_1_topic")
+		self.consumer_2_topic = kafka_client_config.get("consumer_2_topic")
 
 		# Create global (sort of) PyKafka client
 		self.pykafka_client = KafkaClient("kafka:9092")
 
 		# Create Producer
-		if(kafka_client_config["producer_topic"]):
+		if(self.producer_topic):
 			topic = self.pykafka_client.topics[kafka_client_config["producer_topic"]]
 			self.producer = topic.get_producer(kafka_client_config["producer_params"])
 
 
 		# Create Consumer 1
-		if(kafka_client_config["consumer_1_topic"]):
-			topic = self.pykafka_client.topics[kafka_client_config["consumer_1_topic"]]
+		if(self.consumer_1_topic):
+			topic = self.pykafka_client.topics[self.consumer_1_topic]
 			self.consumer_1 = topic.get_simple_consumer(kafka_client_config["consumer_1_params"])
 
 		# Create Consumer 2
-		if(kafka_client_config["consumer_2_topic"]):
-			topic = self.pykafka_client.topics[kafka_client_config["consumer_2_topic"]]
+		if(self.consumer_2_topic):
+			topic = self.pykafka_client.topics[self.consumer_2_topic]
 			self.consumer_2 = topic.get_simple_consumer(kafka_client_config["consumer_2_params"])
 
 		# Print Complete config
