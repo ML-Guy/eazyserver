@@ -7,6 +7,7 @@ import sys
 import signal
 
 from kafka_connector import KafkaConnector
+import threading
 
 class Manager(object):
 	Type = "Manager"
@@ -34,7 +35,9 @@ class Manager(object):
 
 	def run(self):
 		logger.info("Manager run() called.")
-		self.connected_behaviour.run()
+		main_connector_thread = threading.Thread(target=self.connected_behaviour.run)
+		main_connector_thread.start()
+		
 
 	def onStart(self):
 		logger.info("Manager onStart() called.")
