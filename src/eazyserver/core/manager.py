@@ -52,6 +52,7 @@ class Manager(object):
 
 		# Register signals
 		for k,v in self.signal_map.items():
+			print("Registering Signal = {}".format(k))
 			signal.signal(k, self.receiveSignal)
 
 		# signal.signal(signal.SIGUSR1, self.receiveSignal)
