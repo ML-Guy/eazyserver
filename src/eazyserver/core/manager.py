@@ -23,6 +23,8 @@ class Manager(object):
 			self.behaviour, 
 			kafka_client_type=self.kafka_client_type, 
 			kafka_client_config=self.kafka_client_config)
+		
+		self.signal_map = kwargs.get('signal_map', {})
 
 
 	def run(self):
@@ -38,36 +40,24 @@ class Manager(object):
 	# Handling Signals
 	def receiveSignal(self, signal_number, frame):  
 	    print('Received:', signal_number)
-
-	    # SIGUSR1
-	    if(signal_number == 10):
-	    	logger.info("Signal - SIGUSR1")
-	    	self.behaviour.signal_method_usersignal1()
-
-	    # SIGUSR2
-	    if(signal_number == 12):
-	    	logger.info("Signal - SIGUSR2")
-	    	self.behaviour.signal_method_usersignal2()
-
-	    # SIGTERM
-	    if(signal_number == 15):
-	    	logger.info("Terminating...")
-	    	self.behaviour.onExit()
-
-	    # SIGHUP
-	    if(signal_number == 1):
-	    	logger.info("Received SIGHUP")
-	    	self.behaviour.reload_config()
+	    	
+	    if(signal_number in self.signal_map):
+	    	f = self.signal_map[signal_number]
+	    	f['func'](*f['args'], **f['kwargs'])
 	    
 
 	def onSignal(self):
 		logger.info("Manager Signal Handler Initialized.")
 		logger.info('My PID is:{}'.format(str(os.getpid())))
 
-		signal.signal(signal.SIGUSR1, self.receiveSignal)
-		signal.signal(signal.SIGUSR2, self.receiveSignal)
-		signal.signal(signal.SIGTERM, self.receiveSignal)
-		signal.signal(signal.SIGHUP, self.receiveSignal)
+		# Register signals
+		for k,v in self.signal_map.items():
+			signal.signal(k, self.receiveSignal)
+
+		# signal.signal(signal.SIGUSR1, self.receiveSignal)
+		# signal.signal(signal.SIGUSR2, self.receiveSignal)
+		# signal.signal(signal.SIGTERM, self.receiveSignal)
+		# signal.signal(signal.SIGHUP, self.receiveSignal)
 
 
 
