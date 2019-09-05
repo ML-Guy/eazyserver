@@ -26,6 +26,11 @@ class Manager(object):
 		
 		self.signal_map = kwargs.get('signal_map', {})
 
+		# Set Kafka Enable/Disable on SIGUSR2 (12)
+		signal.signal(10, self.receiveSignal)
+		signal.signal(12, self.receiveSignal)
+
+
 
 	def run(self):
 		logger.info("Manager run() called.")
@@ -39,12 +44,21 @@ class Manager(object):
 
 	# Handling Signals
 	def receiveSignal(self, signal_number, frame):  
-	    print('Received:', signal_number)
-	    	
-	    if(signal_number in self.signal_map):
-	    	f = self.signal_map[signal_number]
-	    	f['func'](*f['args'], **f['kwargs'])
-	    
+		print('Received:', signal_number)
+			
+		if(signal_number in self.signal_map):
+			f = self.signal_map[signal_number]
+			f['func'](*f['args'], **f['kwargs'])
+
+		# Set Kafka Enable/Disable on SIGUSR2 (12)
+		if(signal_number == 10):
+			logger.info("Enaling Kafka")
+			self.connected_behaviour.enable_kafka()
+
+		if(signal_number == 12):
+			logger.info("Disabling Kafka")
+			self.connected_behaviour.disable_kafka()
+
 
 	def onSignal(self):
 		logger.info("Manager Signal Handler Initialized.")

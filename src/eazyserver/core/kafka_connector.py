@@ -76,12 +76,6 @@ def formatOutput(output,behavior,source_data):
 	return output
 
 #############################
-## Kafka Library classes
-#############################
-
-
-
-#############################
 ## Main Connector Class
 #############################
 
@@ -90,6 +84,7 @@ class KafkaConnector(object):
 
 	def __init__(self, Behaviour, **kwargs):
 
+		self.kafka_should_run = True
 		self.client = None
 		self.behavior = Behaviour
 
@@ -111,58 +106,71 @@ class KafkaConnector(object):
 		if(self.kafka_client_type == "confluent"):
 			self.client = Kafka_Confluent(kafka_client_config=self.kafka_client_config)
 
+	def enable_kafka(self):
+		logger.info("Enabling Kafka")
+		self.kafka_should_run = True
+
+	def disable_kafka(self):
+		logger.info("Disbaling Kafka")
+		self.kafka_should_run = False
+
 	def run(self):
 
 		while(True):
-			source_data = []
+			if(self.kafka_should_run):
+				source_data = []
 
-			############################
-			# Consume
-			############################
+				############################
+				# Consume
+				############################
 
-			message_1 = None
-			message_2 = None
-			output = None
+				message_1 = None
+				message_2 = None
+				output = None
 
-			# if both consumers are specified
-			if(self.client.consumer_2_topic):
-				print("BOTH CONSUMER PRESENT")
+				# if both consumers are specified
+				if(self.client.consumer_2_topic):
+					print("BOTH CONSUMER PRESENT")
 
-				synced = None
+					synced = None
 
-				# TODO Sync Consumers
-				if(self.kafka_client_config['sync_consumers']):
-					# sync_consumer = True
-					message_1, message_2 = self.client.sync_consumers()
-					source_data.append(message_2)
-					source_data.append(message_1)
+					# TODO Sync Consumers
+					if(self.kafka_client_config['sync_consumers']):
+						# sync_consumer = True
+						message_1, message_2 = self.client.sync_consumers()
+						source_data.append(message_2)
+						source_data.append(message_1)
 
-					output = self.behavior.run(message_1, message_2)
+						output = self.behavior.run(message_1, message_2)
 
-				else:
-					# sync_consumer = False
-					message_2 = self.client.consume2()
+					else:
+						# sync_consumer = False
+						message_2 = self.client.consume2()
+						message_1 = self.client.consume1()
+
+						# import pdb; pdb.set_trace();
+
+				elif(self.client.consumer_1_topic):
 					message_1 = self.client.consume1()
+					source_data.append(message_1)
+					output = self.behavior.run(message_1)
+				else:
+					output = self.behavior.run()
 
-					# import pdb; pdb.set_trace();
+				# Transform output to fill missing fields
+				if output:
+					output=formatOutput(output, self.behavior, source_data)
 
-			elif(self.client.consumer_1_topic):
-				message_1 = self.client.consume1()
-				source_data.append(message_1)
-				output = self.behavior.run(message_1)
+				############################
+				# Produce
+				############################
+
+				if(self.client.producer_topic):
+					if(output):
+						message_to_produce = dict_to_kafka(output, source_data)
+						producer_response = self.client.produce(message_to_produce)
+
 			else:
-				output = self.behavior.run()
-
-			# Transform output to fill missing fields
-			if output:
-				output=formatOutput(output, self.behavior, source_data)
-
-			############################
-			# Produce
-			############################
-
-			if(self.client.producer_topic):
-				if(output):
-					message_to_produce = dict_to_kafka(output, source_data)
-					producer_response = self.client.produce(message_to_produce)
+				logger.info("self.kafka_should_run = False. Sleeping for 30 secs...")
+				time.sleep(30)
 
