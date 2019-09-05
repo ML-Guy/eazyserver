@@ -55,10 +55,7 @@ class Manager(object):
 			print("Registering Signal = {}".format(k))
 			signal.signal(k, self.receiveSignal)
 
-		# signal.signal(signal.SIGUSR1, self.receiveSignal)
-		# signal.signal(signal.SIGUSR2, self.receiveSignal)
-		# signal.signal(signal.SIGTERM, self.receiveSignal)
-		# signal.signal(signal.SIGHUP, self.receiveSignal)
+
 
 
 
