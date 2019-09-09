@@ -21,3 +21,8 @@ flatten_json==0.1.6
 influxdb==5.0.0
 confluent-kafka==1.1.0
 pprint
+
+
+#requires librdkafka-dev to be installed
+#apt-get install -y  librdkafka-dev
+#RDKAFKA_INSTALL=system pip install pykafka

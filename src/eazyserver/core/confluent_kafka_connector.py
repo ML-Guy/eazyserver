@@ -11,6 +11,94 @@ from confluent_kafka import Producer as KafkaProducer
 from confluent_kafka import Consumer as KafkaConsumer
 from confluent_kafka import TopicPartition
 
+#############################
+## Helper Methods
+#############################
+
+mapnonprint = {
+	'\0':'^@',
+	'\1':'^A',
+	'\2':'^B',
+	'\3':'^C',
+	'\4':'^D',
+	'\5':'^E',
+	'\6':'^F',
+	'\a':'^G',
+	'\b':'^H',
+	'\t':'^I',
+	'\n':'^J',
+	'\v':'^K',
+	'\f':'^L',
+	'\r':'^M',
+	'\x00':'^@',
+	'\x01':'^A',
+	'\x02':'^B',
+	'\x03':'^C',
+	'\x04':'^D',
+	'\x05':'^E',
+	'\x06':'^F',
+	'\x07':'^G',
+	'\x08':'^H',
+	'\x09':'^I',
+	'\x0a':'^J',
+	'\x0b':'^K',
+	'\x0c':'^L',
+	'\x0d':'^M',
+	'\x0e':'^N',
+	'\x0f':'^O',
+	'\x10':'^P',
+	'\x11':'^Q',
+	'\x12':'^R',
+	'\x13':'^S',
+	'\x14':'^T',
+	'\x15':'^U',
+	'\x16':'^V',
+	'\x17':'^W',
+	'\x18':'^X',
+	'\x19':'^Y',
+	'\x1a':'^Z',
+	'\x1b':'^[',
+	'\x1c':'^\\',
+	'\x1d':'^]',
+	'\x1e':'^^',
+	'\x1f':'^-',
+}
+
+def replacecontrolchar(text):
+	for a,b in mapnonprint.items():
+		if a in text:
+			logger.warning("Json Decode replacecontrolchar:{} with {}".format(a,b))
+			text = text.replace(a,b)
+	return text
+
+def kafka_to_dict(kafka_msg):
+	try:
+		try:
+			msg = json.loads(kafka_msg.value())
+		except:
+			msg = json.loads(replacecontrolchar(kafka_msg.value()))
+		kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
+		msg["_kafka__id"]= kafka_msg_id
+	except Exception as e:
+		logger.error("Json Decode Error:offset {}:{}".format(kafka_msg.offset(),e))
+		filename = "/LFS/dump/"+str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+		
+		# If path does not exists, create it
+		if(not os.path.exists("/LFS/dump")):
+			os.makedirs("/LFS/dump")
+		
+		with open(filename,"wb") as f: f.write(kafka_msg.value())
+		msg=None
+	return msg
+	
+def dict_to_kafka(output,source_data):
+	for data in source_data:
+		if output["source_id"] == data["_id"]:
+			output["_kafka_source_id"] = data["_kafka__id"]
+			break
+	kafka_msg = json.dumps(output)
+	return kafka_msg
+
 class Kafka_Confluent(object):
 	Type = "Confluent-Kafka Wrapper Class"
 	def __init__(self, kafka_client_config):
@@ -60,12 +148,15 @@ class Kafka_Confluent(object):
 		# TODO : Print Complete config
 
 
-	def produce(self, value):
+	def produce(self, output):
+		value = dict_to_kafka(output)
+		
 		print("="*50)
 		print("Producing Message")
 		print("self.producer_topic", self.producer_topic)
 		print("message size, ", str(len(value)))
 		print("="*50)
+
 		self.producer.produce(self.producer_topic, value)
 		self.producer.poll(0)
 		return(True)
@@ -76,7 +167,7 @@ class Kafka_Confluent(object):
 		print("self.consumer_1_topic", self.consumer_1_topic)
 		print("="*50)
 		message_kafka = self.consumer_1.consume(num_messages=1)[0]
-		message_dict = json.loads(message_kafka.value())
+		message_dict = kafka_to_dict(message_kafka.value())
 		return(message_dict)
 
 	def consume2(self):
@@ -85,7 +176,7 @@ class Kafka_Confluent(object):
 		print("self.consumer_2_topic", self.consumer_2_topic)
 		print("="*50)
 		message_kafka = self.consumer_2.consume(num_messages=1)[0]
-		message_dict = json.loads(message_kafka.value())
+		message_dict = kafka_to_dict(message_kafka.value())
 		return(message_dict)
 		
 	def sync_consumers(self):
@@ -94,7 +185,7 @@ class Kafka_Confluent(object):
 		m2 = self.consumer_2.consume()[0]
 
 		if(m1.offset() == m2.offset()): # Consumers are synced
-			return(m1.value(), m2.value())
+			return(kafka_to_dict(m1.value()), kafka_to_dict(m2.value()))
 
 		logger.info("Syncing Consumers...")
 
@@ -110,7 +201,7 @@ class Kafka_Confluent(object):
 		import pdb; pdb.set_trace()
 
 		if(m1.offset() == m2.offset()): 
-			return(m1.value(), m2.value())
+			return(kafka_to_dict(m1.value()), kafka_to_dict(m2.value()))
 
 		logger.info("Consumers not synced. Unknown error.")
 		sys.exit(0)

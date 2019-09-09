@@ -2,6 +2,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.debug("Loaded " + __name__)
 
+import os
 import json
 import time
 import sys
@@ -11,33 +12,6 @@ from datetime import datetime
 
 from pykafka_connector import Kafka_PyKafka
 from confluent_kafka_connector import Kafka_Confluent
-
-
-#############################
-## Helper Methods
-#############################
-
-# def dict_to_binary(the_dict):
-# 	binary = ' '.join(format(ord(letter), 'b') for letter in the_dict)
-# 	return binary
-
-# def binary_to_dict(the_binary):
-# 	jsn = ''.join(chr(int(x, 2)) for x in the_binary.split())
-# 	return jsn
-
-def kafka_to_dict(kafka_msg):
-	msg = json.loads(kafka_msg.value)
-	kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
-	msg["_kafka__id"]= kafka_msg_id
-	return msg
-	
-def dict_to_kafka(output,source_data):
-	for data in source_data:
-		if output["source_id"] == data["_id"]:
-			output["_kafka_source_id"] = data["_kafka__id"]
-			break
-	kafka_msg = json.dumps(output)
-	return kafka_msg
 
 # TODO: Move/Add formatOutput to behaviour base class 
 # Created following fields in output dict if missing:
@@ -82,14 +56,14 @@ def formatOutput(output,behavior,source_data):
 class KafkaConnector(object):
 	Type = "KafkaConnector"
 
-	def __init__(self, Behaviour, **kwargs):
+	def __init__(self, Behaviour, kafka_client_type="confluent", **kwargs):
 
 		self.kafka_should_run = True
 		self.client = None
 		self.behavior = Behaviour
 
-		self.kafka_client_type = kwargs.get("kafka_client_type")
-		self.kafka_client_config = kwargs.get("kafka_client_config")
+		self.kafka_client_type = kafka_client_type
+		self.kafka_client_config = kwargs
 		
 		# TODO : Validate **kwargs
 
@@ -132,23 +106,19 @@ class KafkaConnector(object):
 				if(self.client.consumer_2_topic):
 					print("BOTH CONSUMER PRESENT")
 
-					synced = None
-
-					# TODO Sync Consumers
 					if(self.kafka_client_config['sync_consumers']):
 						# sync_consumer = True
 						message_1, message_2 = self.client.sync_consumers()
-						source_data.append(message_2)
-						source_data.append(message_1)
-
-						output = self.behavior.run(message_1, message_2)
 
 					else:
 						# sync_consumer = False
 						message_2 = self.client.consume2()
 						message_1 = self.client.consume1()
-
-						# import pdb; pdb.set_trace();
+					
+					# Received both messages
+					source_data.append(message_2)
+					source_data.append(message_1)
+					output = self.behavior.run(message_1, message_2)
 
 				elif(self.client.consumer_1_topic):
 					message_1 = self.client.consume1()
@@ -159,7 +129,7 @@ class KafkaConnector(object):
 
 				# Transform output to fill missing fields
 				if output:
-					output=formatOutput(output, self.behavior, source_data)
+					output = formatOutput(output, self.behavior, source_data)
 
 				############################
 				# Produce
@@ -167,10 +137,9 @@ class KafkaConnector(object):
 
 				if(self.client.producer_topic):
 					if(output):
-						message_to_produce = dict_to_kafka(output, source_data)
-						producer_response = self.client.produce(message_to_produce)
+						producer_response = self.client.produce(output)
 
 			else:
-				logger.info("self.kafka_should_run = False. Sleeping for 30 secs...")
+				logger.info("Kafka Connector paused (self.kafka_should_run = False). Sleeping for 30 secs...")
 				time.sleep(30)
 

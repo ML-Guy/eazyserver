@@ -54,11 +54,8 @@ class Eazy(Eve, Events):
         
 
     def load_eazy_config(self, configs, env_prefix):
-        print("load_eazy_config() called")
-        print("configs", configs)
-        print("env_prefix", env_prefix)
-        print("GG")
-        
+        logger.info("load_eazy_config() called.")
+
         """Loads the config from environment and settings file."""
         # 1. Loads from settings.ini [default settings]
         self.config.from_pyfile(self.SETTINGS_INI) 
