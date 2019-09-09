@@ -23,14 +23,13 @@ class Manager(object):
 		self.connected_behaviour = KafkaConnector(
 			self.behaviour, 
 			kafka_client_type=self.kafka_client_type, 
-			kafka_client_config=self.kafka_client_config)
+			**self.kafka_client_config)
 		
 		self.signal_map = kwargs.get('signal_map', {})
 
 		# Set Kafka Enable/Disable on SIGUSR2 (12)
 		signal.signal(10, self.receiveSignal)
 		signal.signal(12, self.receiveSignal)
-
 
 
 	def run(self):
