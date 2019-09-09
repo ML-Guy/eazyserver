@@ -112,7 +112,7 @@ class KafkaConnector(object):
 
 					else:
 						# sync_consumer = False
-						message_2 = self.client.consume2()
+						message_2 = self.client.consume2(block=False)
 						message_1 = self.client.consume1()
 					
 					# Received both messages

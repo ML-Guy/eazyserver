@@ -148,8 +148,8 @@ class Kafka_PyKafka(object):
 			logger.info("Empty message received from consumer")
 			return(None)
 
-	def consume2(self):
-		message_kafka = self.consumer_2.consume()
+	def consume2(self, block=True):
+		message_kafka = self.consumer_2.consume(block=block)
 		if(message_kafka is not None):
 			
 			print("="*50)

@@ -170,14 +170,25 @@ class Kafka_Confluent(object):
 		message_dict = kafka_to_dict(message_kafka.value())
 		return(message_dict)
 
-	def consume2(self):
+	def consume2(self, block=True):
+
 		print("="*50)
 		print("Consuming Message")
 		print("self.consumer_2_topic", self.consumer_2_topic)
 		print("="*50)
-		message_kafka = self.consumer_2.consume(num_messages=1)[0]
-		message_dict = kafka_to_dict(message_kafka.value())
+
+		if(block):
+			message_kafka = self.consumer_2.consume(num_messages=1)[0]
+		else:
+			message_kafka = self.consumer2.poll(timeout=0.01)
+
+		if(message_kafka):
+			message_dict = kafka_to_dict(message_kafka.value())
+		else:
+			message_dict = None
+		
 		return(message_dict)
+
 		
 	def sync_consumers(self):
 
