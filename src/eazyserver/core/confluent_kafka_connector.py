@@ -150,7 +150,7 @@ class Kafka_Confluent(object):
 
 	def produce(self, output):
 		value = dict_to_kafka(output)
-		
+
 		print("="*50)
 		print("Producing Message")
 		print("self.producer_topic", self.producer_topic)
@@ -184,24 +184,31 @@ class Kafka_Confluent(object):
 		m1 = self.consumer_1.consume()[0]
 		m2 = self.consumer_2.consume()[0]
 
-		if(m1.offset() == m2.offset()): # Consumers are synced
-			return(kafka_to_dict(m1.value()), kafka_to_dict(m2.value()))
+		m1_dict, m2_dict = kafka_to_dict(m1.value()), kafka_to_dict(m2.value())
 
-		logger.info("Syncing Consumers...")
+		try:
+			assert(m2_dict["_id"] == m1_dict["source_id"])
 
-		consumer_2_topic_name = m2.topic()
-		consumer_2_partition = m2.partition()
-		consumer_2_offset = m1.offset()
-		consumer_2_topic_partition = TopicPartition(topic=consumer_2_topic_name, partition=consumer_2_partition, offset=consumer_2_offset) 
+		except AssertionError:
+			logger.info("Consumers not synced. Syncing now...")
 
-		# Sync Consumer 2
-		self.consumer_2.seek(consumer_2_topic_partition)
-		m2 = self.consumer_2.consume()[0]
+			kafka_source_id = m1_dict["_kafka_source_id"]                   #"{id}:{topic}:{partition}:{offset}"
+			consumer_2_topic_name = kafka_source_id.split(":")[-3] 			# 3rd last 
+			consumer_2_partition = int(kafka_source_id.split(":")[-2])      # 3rd last
+			consumer_2_offset =  int(kafka_source_id.split(":")[-1])
+			consumer_2_topic_partition = TopicPartition(topic=consumer_2_topic_name, partition=consumer_2_partition, offset=consumer_2_offset)
 
-		import pdb; pdb.set_trace()
+			# Sync Consumer 2
+			self.consumer_2.seek(consumer_2_topic_partition)
+			m2 = self.consumer_2.consume()[0]
+			m2_dict = kafka_to_dict(m2.value())
 
-		if(m1.offset() == m2.offset()): 
-			return(kafka_to_dict(m1.value()), kafka_to_dict(m2.value()))
+		try:
+			assert(m2_dict["_id"] == m1_dict["source_id"]) 
+			return(m1_dict, m2_dict)
+		except AssertionError:
+			logger.info("Consumers not synced. Unknown error.")
+			sys.exit(0)
 
-		logger.info("Consumers not synced. Unknown error.")
-		sys.exit(0)
+
+
