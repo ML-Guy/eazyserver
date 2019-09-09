@@ -73,20 +73,20 @@ def replacecontrolchar(text):
 def kafka_to_dict(kafka_msg):
 	try:
 		try:
-			msg = json.loads(kafka_msg.value())
+			msg = json.loads(kafka_msg.value)
 		except:
-			msg = json.loads(replacecontrolchar(kafka_msg.value()))
-		kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
+			msg = json.loads(replacecontrolchar(kafka_msg.value))
+		kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"], "offset":kafka_msg.offset, "partition": kafka_msg.partitions[0], "topic":kafka_msg.topic })
 		msg["_kafka__id"]= kafka_msg_id
 	except Exception as e:
-		logger.error("Json Decode Error:offset {}:{}".format(kafka_msg.offset(),e))
+		logger.error("Json Decode Error:offset {}:{}".format(kafka_msg.offset,e))
 		filename = "/LFS/dump/"+str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 		
 		# If path does not exists, create it
 		if(not os.path.exists("/LFS/dump")):
 			os.makedirs("/LFS/dump")
 		
-		with open(filename,"wb") as f: f.write(kafka_msg.value())
+		with open(filename,"wb") as f: f.write(kafka_msg.value)
 		msg=None
 	return msg
 	
@@ -167,26 +167,33 @@ class Kafka_PyKafka(object):
 
 	def sync_consumers(self):
 
-		message_1 = self.consumer_1.consume()
-		message_1_offset = message_1.offset - 2
-		message_1_partition = self.consumer_1.partitions[0]
-		offset = [(message_1_partition, message_1_offset)]
-
-		self.consumer_1.reset_offsets([(message_1_partition, message_1_offset)])
-		self.consumer_1.stop()
-		self.consumer_1.start()
-
-		self.consumer_2.reset_offsets([(message_1_partition, message_1_offset)])
-		self.consumer_2.stop()
-		self.consumer_2.start()
-
 		m1 = self.consumer_1.consume()
 		m2 = self.consumer_2.consume()
 
-		print("Synced????")
+		m1_dict, m2_dict = kafka_to_dict(m1.value, kafka_to_dict(m2.value))
 
-		print("OFFSET M1 = {}".format(m1.offset))
-		print("OFFSET M2 = {}".format(m2.offset))
+		try:
+			assert(m2_dict["_id"] == m1_dict["source_id"])
 
-		if(m1.offset == m2.offset):
-			return(kafka_to_dict(m1.value), kafka_to_dict(m2.value))
+		except AssertionError:
+			logger.info("Consumers not synced. Syncing now...")
+
+
+			kafka_source_id = m1_dict["_kafka_source_id"]                   #"{id}:{topic}:{partition}:{offset}"
+			consumer_2_partition = int(kafka_source_id.split(":")[-2])      # 3rd last
+			consumer_2_offset =  int(kafka_source_id.split(":")[-1])
+
+			# Sync Consumer 2
+			self.consumer_2.reset_offsets([(consumer_2_partition, consumer_2_offset)])
+			self.consumer_2.stop()
+			self.consumer_2.start()
+
+			m2 = self.consumer_2.consume()
+			m2_dict = kafka_to_dict(m2.value)
+
+		try:
+			assert(m2_dict["_id"] == m1_dict["source_id"]) 
+			return(m1_dict, m2_dict)
+		except AssertionError:
+			logger.info("Consumers not synced. Unknown error.")
+			sys.exit(0)

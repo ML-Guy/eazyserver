@@ -181,8 +181,8 @@ class Kafka_Confluent(object):
 		
 	def sync_consumers(self):
 
-		m1 = self.consumer_1.consume()[0]
-		m2 = self.consumer_2.consume()[0]
+		m1 = self.consumer_1.consume(num_messages=1)[0]
+		m2 = self.consumer_2.consume(num_messages=1)[0]
 
 		m1_dict, m2_dict = kafka_to_dict(m1.value()), kafka_to_dict(m2.value())
 
@@ -200,7 +200,7 @@ class Kafka_Confluent(object):
 
 			# Sync Consumer 2
 			self.consumer_2.seek(consumer_2_topic_partition)
-			m2 = self.consumer_2.consume()[0]
+			m2 = self.consumer_2.consume(num_messages=1)[0]
 			m2_dict = kafka_to_dict(m2.value())
 
 		try:
