@@ -137,7 +137,7 @@ class KafkaConnector(object):
 
 				if(self.client.producer_topic):
 					if(output):
-						producer_response = self.client.produce(output)
+						producer_response = self.client.produce(output, source_data)
 
 			else:
 				logger.info("Kafka Connector paused (self.kafka_should_run = False). Sleeping for 30 secs...")

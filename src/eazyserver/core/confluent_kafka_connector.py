@@ -80,6 +80,7 @@ def kafka_to_dict(kafka_msg):
 		kafka_msg_id = "{id}:{topic}:{partition}:{offset}".format(**{ "id":msg["_id"],"offset":kafka_msg.offset(), "partition": kafka_msg.partition(), "topic":kafka_msg.topic() })
 		msg["_kafka__id"]= kafka_msg_id
 	except Exception as e:
+		# import pdb; pdb.set_trace()
 		logger.error("Json Decode Error:offset {}:{}".format(kafka_msg.offset(),e))
 		filename = "/LFS/dump/"+str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 		
@@ -148,8 +149,8 @@ class Kafka_Confluent(object):
 		# TODO : Print Complete config
 
 
-	def produce(self, output):
-		value = dict_to_kafka(output)
+	def produce(self, output, source_data):
+		value = dict_to_kafka(output, source_data)
 
 		print("="*50)
 		print("Producing Message")
@@ -167,7 +168,7 @@ class Kafka_Confluent(object):
 		print("self.consumer_1_topic", self.consumer_1_topic)
 		print("="*50)
 		message_kafka = self.consumer_1.consume(num_messages=1)[0]
-		message_dict = kafka_to_dict(message_kafka.value())
+		message_dict = kafka_to_dict(message_kafka)
 		return(message_dict)
 
 	def consume2(self, block=True):
@@ -183,7 +184,7 @@ class Kafka_Confluent(object):
 			message_kafka = self.consumer2.poll(timeout=0.01)
 
 		if(message_kafka):
-			message_dict = kafka_to_dict(message_kafka.value())
+			message_dict = kafka_to_dict(message_kafka)
 		else:
 			message_dict = None
 		
@@ -195,7 +196,7 @@ class Kafka_Confluent(object):
 		m1 = self.consumer_1.consume(num_messages=1)[0]
 		m2 = self.consumer_2.consume(num_messages=1)[0]
 
-		m1_dict, m2_dict = kafka_to_dict(m1.value()), kafka_to_dict(m2.value())
+		m1_dict, m2_dict = kafka_to_dict(m1), kafka_to_dict(m2)
 
 		try:
 			assert(m2_dict["_id"] == m1_dict["source_id"])
@@ -212,7 +213,7 @@ class Kafka_Confluent(object):
 			# Sync Consumer 2
 			self.consumer_2.seek(consumer_2_topic_partition)
 			m2 = self.consumer_2.consume(num_messages=1)[0]
-			m2_dict = kafka_to_dict(m2.value())
+			m2_dict = kafka_to_dict(m2)
 
 		try:
 			assert(m2_dict["_id"] == m1_dict["source_id"]) 
