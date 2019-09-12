@@ -181,7 +181,7 @@ class Kafka_Confluent(object):
 		if(block):
 			message_kafka = self.consumer_2.consume(num_messages=1)[0]
 		else:
-			message_kafka = self.consumer2.poll(timeout=0.01)
+			message_kafka = self.consumer_2.poll(timeout=0.01)
 
 		if(message_kafka):
 			message_dict = kafka_to_dict(message_kafka)
